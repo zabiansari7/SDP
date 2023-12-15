@@ -6,7 +6,6 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,11 +22,12 @@ import de.srh.toolify.services.ProductService;
 import de.srh.toolify.validators.ProductPropsValidator;
 import de.srh.toolify.validators.ValidatorUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.websocket.server.PathParam;
 
 @RestController
 @Validated
 @Tag(name = "Products", description = "The Product APIs for admin")
-@RequestMapping("/private/admin/products")
+@RequestMapping("/private")
 public class ProductController {
 	
 	private final ProductService productService;
@@ -37,33 +37,29 @@ public class ProductController {
 		this.productService = productService;
 	}
 	
-	@GetMapping(value = "/all")
-	public ResponseEntity<List<ProductEntity>> getAllProducts(Authentication authentication){
-//		if (authentication.getAuthorities().stream()
-//                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ADMIN1/login"))) {
-//			return null;
-//		}
+	@GetMapping(value = "/product/{productId}/quantity")
+	public ResponseEntity<ToolifyResponse> getMaxQuantityByProductId(@PathVariable final Long productId){
 		try {
-			List<ProductEntity> products = productService.getAllProducts();
-			return new ResponseEntity<>(products, HttpStatus.OK);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-		}	
-	}
-	
-	@GetMapping(value = "/{productId}")
-	public ResponseEntity<ProductEntity> getProductByProductId(@PathVariable final Long productId){
-		try {
-			ProductEntity product = productService.getProductByProductId(productId);
-			return new ResponseEntity<>(product, HttpStatus.OK);
+			int maxQuantity = productService.getMaxQuantityByProductId(productId);
+			return new ResponseEntity<>(new ToolifyResponse(String.valueOf(maxQuantity), 200, HttpStatus.OK), HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 	
-	@PostMapping
+	@GetMapping(value = "/admin/products/product", params = "categoryName")
+	public ResponseEntity<List<ProductEntity>> getProductByCategoryName(@PathParam("categoryName") final String categoryName){
+		try {
+			List<ProductEntity> products = productService.getProductByCategoryName(categoryName);
+			return new ResponseEntity<>(products, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	@PostMapping("/admin/products/product")
 	public ResponseEntity<ToolifyResponse> postProduct(@RequestBody final Map<String, Object> product) {
 		ProductEntity productEntity;
 		try {
@@ -87,7 +83,7 @@ public class ProductController {
 				HttpStatus.CREATED);
 	}
 	
-	@PutMapping(value = "/{productId}")
+	@PutMapping(value = "/admin/products/product/{productId}")
 	public ResponseEntity<ToolifyResponse> editProductById(@PathVariable final Long productId, @RequestBody final Map<String, Object> productProps) {
 		try {
 			ValidatorUtil.validate(productProps, ProductPropsValidator.class);
@@ -110,7 +106,7 @@ public class ProductController {
 				HttpStatus.CREATED);
 	}
 	
-	@DeleteMapping(value = "/{productId}")
+	@DeleteMapping(value = "/admin/products/product/{productId}")
 	public ResponseEntity<ToolifyResponse> deleteProduct(@PathVariable final Long productId) {
 		productService.deleteProduct(productId);
 		return new ResponseEntity<>(
